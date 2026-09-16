@@ -82,7 +82,7 @@ int main(void)
 //Exec command, return -1 on failure
 int execute_Command(Command *cmd) {
   int background = 0;
-  int run_Forks(Pgm *pgm, int fdin, background);
+  int run_Forks(Pgm *pgm, int fdin, int background);
 
   if ( cmd == NULL || cmd->pgm == NULL || cmd -> pgm->pgmlist == NULL){
     return -1;
@@ -104,7 +104,14 @@ int execute_Command(Command *cmd) {
   // Kolla om det finns en pipe (nästa kommando i listan)
   if (cmd->pgm->next != NULL) {
     printf("Debug: Detta är en pipeline!\n");
-    if (run_Forks(cmd->pgm, STDIN_FILENO, background) != 1) {
+
+    if(cmd->background){
+      printf("Process running in background with PID: %d\n", pid); // Print the PID of the background process
+      waitpid(pid, NULL, WNOHANG); // Wait for the child process to finish without blocking
+    } else {
+      waitpid(pid, NULL, 0); // Wait for the child process to finish if not running in background
+    }
+    if (run_Forks(cmd->pgm, STDIN_FILENO) != 1) {
       printf("Error executing pipeline\n");
       return -1;
     }
@@ -163,7 +170,7 @@ int execute_Command(Command *cmd) {
   return 1; // Return 1 on success, or an error code on failure
 }
 
-int run_Forks(Pgm *pgm, int fdin, int bgr) {
+int run_Forks(Pgm *pgm, int fdin) {
   if (pgm -> next != NULL){
     int fd[2];
     pipe(fd);
@@ -174,16 +181,10 @@ int run_Forks(Pgm *pgm, int fdin, int bgr) {
       close(fd[0]);
       close(fd[1]);
       execvp(pgm->pgmlist[0], pgm->pgmlist);
-      if(bgr == 1){
-        printf("Process running in background with PID: %d\n", pid); // Print the PID of the background process
-        waitpid(pid, NULL, WNOHANG); // Wait for the child process to finish without blocking
-      } else {
-        waitpid(pid, NULL, 0); // Wait for the child process to finish if not running in background
-      }
       exit(1);
     }
     close(fd[1]);
-    run_Forks(pgm -> next, fd[0], bgr);
+    run_Forks(pgm -> next, fd[0]);
   } else {
     pid_t pid = fork();
     if (pid == 0) {
