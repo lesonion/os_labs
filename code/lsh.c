@@ -23,6 +23,7 @@
 #include <string.h>
 #include <readline/readline.h>
 #include <readline/history.h>
+#include <signal.h>
 
 
 #include <unistd.h>
@@ -82,7 +83,7 @@ int main(void)
 //Exec command, return -1 on failure
 int execute_Command(Command *cmd) {
   int background = 0;
-  int run_Forks(Pgm *pgm, int fdin, int background);
+  int run_Forks(Pgm *pgm, int fdin);
 
   if ( cmd == NULL || cmd->pgm == NULL || cmd -> pgm->pgmlist == NULL){
     return -1;
