@@ -82,6 +82,7 @@ int main(void)
 //Exec command, return -1 on failure
 int execute_Command(Command *cmd) {
   int background = 0;
+  int run_Forks(Pgm *pgm, int fdin);
 
   if ( cmd == NULL || cmd->pgm == NULL || cmd -> pgm->pgmlist == NULL){
     return -1;
@@ -103,7 +104,11 @@ int execute_Command(Command *cmd) {
   // Kolla om det finns en pipe (nästa kommando i listan)
   if (cmd->pgm->next != NULL) {
     printf("Debug: Detta är en pipeline!\n");
-    run_Forks(cmd->pgm, STDIN_FILENO);
+    if (run_Forks(cmd->pgm, STDIN_FILENO) != 1) {
+      printf("Error executing pipeline\n");
+      return -1;
+    }
+    return 1;
   }
   
   signal(SIGINT, SIG_IGN);
@@ -158,17 +163,17 @@ int execute_Command(Command *cmd) {
   return 1; // Return 1 on success, or an error code on failure
 }
 
-void run_Forks(Pgm *pgm, int fdin) {
+int run_Forks(Pgm *pgm, int fdin) {
   if (pgm -> next != NULL){
     int fd[2];
     pipe(fd);
     pid_t pid = fork();
     if(pid == 0){
       dup2(fdin, STDIN_FILENO);
-      dup2(fd[1], STDIN_FILENO);
+      dup2(fd[1], STDOUT_FILENO);
       close(fd[0]);
       close(fd[1]);
-      execvp(pgmlist[0], p->pgmlist);
+      execvp(pgm->pgmlist[0], pgm->pgmlist);
       exit(1);
     }
     close(fd[1]);
@@ -180,7 +185,9 @@ void run_Forks(Pgm *pgm, int fdin) {
       execvp(pgm->pgmlist[0], pgm->pgmlist);
       exit(1);
     }
+    return -1;
   }
+  return 1;
 }
 
 /*
@@ -254,3 +261,5 @@ void stripwhite(char *string)
 
   string[++i] = '\0';
 }
+
+
