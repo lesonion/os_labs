@@ -176,23 +176,49 @@ int run_Forks(Pgm *pgm, int fdin) {
     int fd[2];
     pipe(fd);
     pid_t pid = fork();
+    
+    //Enter child
     if(pid == 0){
       dup2(fdin, STDIN_FILENO);
       dup2(fd[1], STDOUT_FILENO);
       close(fd[0]);
       close(fd[1]);
+      if(fdin != STDIN_FILENO) {
+        close(fdin);
+      }
       execvp(pgm->pgmlist[0], pgm->pgmlist);
       exit(1);
+    } else if(pid == -1) {
+      return -1;
     }
-    close(fd[1]);
+
+    //Enter back into the parent
+    close(fd[1]); // Make sure parent doesn't write to this pipe
+
     run_Forks(pgm -> next, fd[0]);
-  } else {
+    waitpid(pid, NULL, 0);
+
+  } else {        
+    // This else is created for the last command (Is this needed?)
     pid_t pid = fork();
     if (pid == 0) {
       dup2(fdin, STDIN_FILENO);
+      if(fdin != STDIN_FILENO){
+        close(fdin);
+      }
+      
       execvp(pgm->pgmlist[0], pgm->pgmlist);
       exit(1);
+    } else if(pid == -1) {
+      return -1;
     }
+
+    //Back to parent process again
+    if(fdin != STDIN_FILENO){
+      close(fdin);
+    }
+
+    waitpid(pid, NULL, 0);
     return 1;
   }
   return 1;
