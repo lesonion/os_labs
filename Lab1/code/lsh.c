@@ -114,9 +114,8 @@ int execute_Command(Command *cmd) {
       return -1;
     }
     return 1;
-  }
-
-  signal(SIGINT, SIG_IGN);
+  } else{
+    signal(SIGINT, SIG_IGN);
   pid_t pid = fork();
   if(pid < 0){
     printf("Error forking");
@@ -162,13 +161,17 @@ int execute_Command(Command *cmd) {
     waitpid(pid, NULL, WNOHANG); // Wait for the child process to finish without blocking
   } else {
     waitpid(pid, NULL, 0); // Wait for the child process to finish if not running in background
-  }
+}
+}
   
   // TODO Implement logic to execute the command
   return 1; // Return 1 on success, or an error code on failure
 }
 
 int run_Forks(Pgm *pgm, int fdin, Command *cmd) {
+  if (pgm == NULL) {
+    return -1;
+  }
   printf("Doing run_Forks");
   if (pgm -> next != NULL){
     int fd[2];
@@ -214,9 +217,12 @@ int run_Forks(Pgm *pgm, int fdin, Command *cmd) {
       return -1;
     }
     if (pid == 0) {
-      signal(SIGINT, SIG_DFL); // Restore default signal handling for SIGINT in the child process
-    }
+      dup2(fdin, STDIN_FILENO);
+      if(fdin != STDIN_FILENO){
+        close(fdin);
+      }
     signal(SIGINT, SIG_IGN);
+    }
 
 
     int outfd;
@@ -233,11 +239,7 @@ int run_Forks(Pgm *pgm, int fdin, Command *cmd) {
     // This else is created for the last command (Is this needed?)
     
     
-    if (pid == 0) {
-      dup2(fdin, STDIN_FILENO);
-      if(fdin != STDIN_FILENO){
-        close(fdin);
-      }
+
       
       execvp(pgm->pgmlist[0], pgm->pgmlist);
       
@@ -255,7 +257,7 @@ int run_Forks(Pgm *pgm, int fdin, Command *cmd) {
     return 1;
   }
   return 1;
-}
+
 
 /*
  * Print a Command structure as returned by parse on stdout.
