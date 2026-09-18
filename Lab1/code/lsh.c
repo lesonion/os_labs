@@ -46,7 +46,6 @@ int main(void)
     line = readline("> ");
     if (line == NULL)       // Check if EOF (Ctrl+D) is reached
     {
-      printf("ctrl+D, detected\n");
       break; // Exit the loop if EOF is reached (Ctrl+D)
     }
 
@@ -83,18 +82,17 @@ int main(void)
 //Exec command, return -1 on failure
 int execute_Command(Command *cmd) {
   int background = 0;
-  int run_Forks(Pgm *pgm, int fdin);
+  int run_Forks(Pgm *pgm, int fdin, Command *cmd);
 
   if ( cmd == NULL || cmd->pgm == NULL || cmd -> pgm->pgmlist == NULL){
     return -1;
-  // } else if (cmd->pgm->pgmlist->next() == "&")
-  } else if (cmd->background)
-  {
+  }
+  if (cmd->background){
     background = 1;
   }
   char **args = cmd->pgm->pgmlist;
   if (strcmp(cmd->pgm->pgmlist[0], "exit") == 0) { // Check if the command is "exit"
-    printf("Exiting the shell...\n");
+    // printf("Exiting the shell...\n");
     exit(0);
   }
   if (strcmp(cmd->pgm->pgmlist[0], "cd") == 0) { // Check if the command is "cd"
@@ -104,7 +102,6 @@ int execute_Command(Command *cmd) {
   }
   // Kolla om det finns en pipe (nästa kommando i listan)
   if (cmd->pgm->next != NULL) {
-    printf("Debug: Detta är en pipeline!\n");
 
     // if(cmd->background){
     //   printf("Process running in background with PID: %d\n", pid); // Print the PID of the background process
@@ -112,13 +109,13 @@ int execute_Command(Command *cmd) {
     // } else {
     //   waitpid(pid, NULL, 0); // Wait for the child process to finish if not running in background
     // }
-    if (run_Forks(cmd->pgm, STDIN_FILENO) != 1) {
+    if (run_Forks(cmd->pgm, STDIN_FILENO, cmd) != 1) {
       printf("Error executing pipeline\n");
       return -1;
     }
     return 1;
   }
-  
+
   signal(SIGINT, SIG_IGN);
   pid_t pid = fork();
   if(pid < 0){
@@ -171,36 +168,71 @@ int execute_Command(Command *cmd) {
   return 1; // Return 1 on success, or an error code on failure
 }
 
-int run_Forks(Pgm *pgm, int fdin) {
+int run_Forks(Pgm *pgm, int fdin, Command *cmd) {
+  printf("Doing run_Forks");
   if (pgm -> next != NULL){
     int fd[2];
     pipe(fd);
+    signal(SIGINT, SIG_IGN);
     pid_t pid = fork();
     
     //Enter child
     if(pid == 0){
+      signal(SIGINT, SIG_DFL); // Restore default signal handling for SIGINT in the child process
       dup2(fdin, STDIN_FILENO);
       dup2(fd[1], STDOUT_FILENO);
       close(fd[0]);
       close(fd[1]);
-      if(fdin != STDIN_FILENO) {
+
+      if(fdin != STDIN_FILENO) { // fail safe 
         close(fdin);
       }
       execvp(pgm->pgmlist[0], pgm->pgmlist);
-      exit(1);
+
+      exit(1); // Fail if execvp fails
     } else if(pid == -1) {
       return -1;
     }
 
     //Enter back into the parent
     close(fd[1]); // Make sure parent doesn't write to this pipe
+    if(fdin != STDIN_FILENO) { // fail safe 
+      close(fdin);
+    }
 
-    run_Forks(pgm -> next, fd[0]);
+
+    
+    run_Forks(pgm -> next, fd[0], cmd);
     waitpid(pid, NULL, 0);
-
   } else {        
-    // This else is created for the last command (Is this needed?)
     pid_t pid = fork();
+    if(pid < 0){
+      printf("Error forking");
+      if(fdin != STDIN_FILENO){
+        close(fdin);
+      }
+      return -1;
+    }
+    if (pid == 0) {
+      signal(SIGINT, SIG_DFL); // Restore default signal handling for SIGINT in the child process
+    }
+    signal(SIGINT, SIG_IGN);
+
+
+    int outfd;
+    if(cmd->rstdout){
+      int flags = O_WRONLY | O_CREAT | O_TRUNC;
+      outfd = open(cmd->rstdout, flags, 0644);
+      if(outfd < 0){
+        perror("Error opening output file");
+        exit(1);
+      }
+      dup2(outfd, STDOUT_FILENO);
+      close(outfd);
+    }
+    // This else is created for the last command (Is this needed?)
+    
+    
     if (pid == 0) {
       dup2(fdin, STDIN_FILENO);
       if(fdin != STDIN_FILENO){
@@ -208,7 +240,8 @@ int run_Forks(Pgm *pgm, int fdin) {
       }
       
       execvp(pgm->pgmlist[0], pgm->pgmlist);
-      exit(1);
+      
+      exit(1); //Failsafe
     } else if(pid == -1) {
       return -1;
     }
