@@ -37,9 +37,18 @@ static void print_cmd(Command *cmd);
 static void print_pgm(Pgm *p);
 void stripwhite(char *);
 int execute_Command(Command *cmd);
+int run_Forks(Pgm *pgm, int fdin, Command *cmd);
+void sigchld_handler(int sig);
 
 int main(void)
 {
+  struct sigaction sa;
+  memset(&sa, 0, sizeof sa);
+  sa.sa_handler = sigchld_handler;
+  sigemptyset(&sa.sa_mask);
+  sa.sa_flags = SA_RESTART;
+  sigaction(SIGCHLD, &sa, NULL);
+
   for (;;)
   {
     char *line;
@@ -82,7 +91,6 @@ int main(void)
 //Exec command, return -1 on failure
 int execute_Command(Command *cmd) {
   int background = 0;
-  int run_Forks(Pgm *pgm, int fdin, Command *cmd);
 
   if ( cmd == NULL || cmd->pgm == NULL || cmd -> pgm->pgmlist == NULL){
     return -1;
@@ -116,147 +124,175 @@ int execute_Command(Command *cmd) {
     return 1;
   } else{
     signal(SIGINT, SIG_IGN);
-  pid_t pid = fork();
-  if(pid < 0){
-    printf("Error forking");
-    return -1;
-  }
-  
-  if (pid == 0){ // Child process
-    signal(SIGINT, SIG_DFL); // Restore default signal handling for SIGINT in the child process
-
-
-    if(cmd-> rstdin != NULL){ // Check if input redirection is specified
-      int in = open(cmd->rstdin, O_RDONLY); // Open the input file for reading
-      
-      if (in < 0) {
-        perror("Error opening input file"); // Print an error message if the file cannot be opened
-        exit(1); // Exit the child process with an error code
-      }
-      
-      dup2(in, STDIN_FILENO); // Redirect standard input to the opened file
-      close(in); // Close the file descriptor after redirection
-      
+    pid_t pid = fork();
+    if(pid < 0){
+      printf("Error forking");
+      return -1;
     }
     
-    // stdout redirection
-    if(cmd -> rstdout != NULL){
-      int out = open(cmd->rstdout, O_WRONLY | O_CREAT, 0644); // Open the output file for writing (create if it doesn't exist)
-    
-      if(out < 0){
-        perror("Error opening output file"); // Print an error message if the file cannot be opened
+    if (pid == 0){ // Child process
+      signal(SIGINT, SIG_DFL); // Restore default signal handling for SIGINT in the child process
+
+
+      if(cmd-> rstdin != NULL){ // Check if input redirection is specified
+        int in = open(cmd->rstdin, O_RDONLY); // Open the input file for reading
+        
+        if (in < 0) {
+          perror("Error opening input file"); // Print an error message if the file cannot be opened
+          exit(1); // Exit the child process with an error code
+        }
+        
+        dup2(in, STDIN_FILENO); // Redirect standard input to the opened file
+        close(in); // Close the file descriptor after redirection
+        
+      }
+      
+      // stdout redirection
+      if(cmd -> rstdout != NULL){
+        int out = open(cmd->rstdout, O_WRONLY | O_CREAT, 0644); // Open the output file for writing (create if it doesn't exist)
+      
+        if(out < 0){
+          perror("Error opening output file"); // Print an error message if the file cannot be opened
+          exit(1); // Exit the child process with an error code
+        }
+        dup2(out, STDOUT_FILENO); // Redirect standard output to the opened file
+        close(out); // Close the file descriptor after redirection
+      }
+
+      if(execvp(args[0], args) == -1) { // Execute the command with the provided arguments
+        perror("Error executing command"); // Print an error message if the command execution fails
         exit(1); // Exit the child process with an error code
       }
-      dup2(out, STDOUT_FILENO); // Redirect standard output to the opened file
-      close(out); // Close the file descriptor after redirection
     }
-
-    if(execvp(args[0], args) == -1) { // Execute the command with the provided arguments
-      perror("Error executing command"); // Print an error message if the command execution fails
-      exit(1); // Exit the child process with an error code
-    }
-  }
-  if(background == 1){
-    printf("Process running in background with PID: %d\n", pid); // Print the PID of the background process
-    waitpid(pid, NULL, WNOHANG); // Wait for the child process to finish without blocking
-  } else {
-    waitpid(pid, NULL, 0); // Wait for the child process to finish if not running in background
-}
-}
+    if(background == 1){
+      printf("Process running in background with PID: %d\n", pid); // Print the PID of the background process
+      // waitpid(pid, NULL, WNOHANG); // Wait for the child process to finish without blocking
+    } else {
+      waitpid(pid, NULL, 0); // Wait for the child process to finish if not running in background
+    } 
   
-  // TODO Implement logic to execute the command
-  return 1; // Return 1 on success, or an error code on failure
+    // TODO Implement logic to execute the command
+    return 1; // Return 1 on success, or an error code on failure
+
+  }
 }
 
 int run_Forks(Pgm *pgm, int fdin, Command *cmd) {
   if (pgm == NULL) {
     return -1;
   }
-  printf("Doing run_Forks");
-  if (pgm -> next != NULL){
+  if (pgm->next != NULL) {
     int fd[2];
-    pipe(fd);
-    signal(SIGINT, SIG_IGN);
-    pid_t pid = fork();
-    
-    //Enter child
-    if(pid == 0){
-      signal(SIGINT, SIG_DFL); // Restore default signal handling for SIGINT in the child process
-      dup2(fdin, STDIN_FILENO);
-      dup2(fd[1], STDOUT_FILENO);
-      close(fd[0]);
-      close(fd[1]);
-
-      if(fdin != STDIN_FILENO) { // fail safe 
-        close(fdin);
-      }
-      execvp(pgm->pgmlist[0], pgm->pgmlist);
-
-      exit(1); // Fail if execvp fails
-    } else if(pid == -1) {
+    if (pipe(fd) < 0) {
+      perror("pipe");
       return -1;
     }
 
-    //Enter back into the parent
-    close(fd[1]); // Make sure parent doesn't write to this pipe
-    if(fdin != STDIN_FILENO) { // fail safe 
+    signal(SIGINT, SIG_IGN);
+
+    // 1. REKURSION FÖRST: Skicka med skrivänden fd[1] till kommandot före i kedjan
+    run_Forks(pgm->next, fd[1], cmd);
+
+    // 2. Föräldern stänger skrivänden DIREKT när det första kommandot har skapats
+    // Detta gör att läsaren (som skapas nedan) får EOF när skrivaren dör!
+    close(fd[1]);
+
+    // 3. Nu skapar vi barnet för det NUVARANDE kommandot (t.ex. rev)
+    pid_t pid = fork();
+    if (pid < 0) {
+      perror("Error forking");
+      close(fd[0]);
+      return -1;
+    }
+
+    if (pid == 0) {
+      signal(SIGINT, SIG_DFL); // Återställ Ctrl+C i barnet
+
+      // Koppla LÄSÄNDEN (fd[0]) till STDIN för detta kommando
+      dup2(fd[0], STDIN_FILENO);
+      close(fd[0]);
+
+      if (fdin != STDIN_FILENO) {
+        dup2(fdin, STDOUT_FILENO);
+        close(fdin);
+      }
+
+      // Om detta kommando har en filomdirigering för stdout ( t.ex. > output.txt )
+      if (cmd->rstdout != NULL) {
+        int outfd = open(cmd->rstdout, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+        if (outfd < 0) {
+          perror("Error opening output file");
+          exit(1);
+        }
+        dup2(outfd, STDOUT_FILENO);
+        close(outfd);
+      }
+
+      execvp(pgm->pgmlist[0], pgm->pgmlist);
+      perror("execvp");
+      exit(1);
+    }
+
+    // Föräldraprocessen stänger läsänden när barnet är skapat
+    close(fd[0]);
+    if (fdin != STDIN_FILENO) {
       close(fdin);
     }
 
-
-    
-    run_Forks(pgm -> next, fd[0], cmd);
     waitpid(pid, NULL, 0);
-  } else {        
-    pid_t pid = fork();
-    if(pid < 0){
-      printf("Error forking");
-      if(fdin != STDIN_FILENO){
-        close(fdin);
-      }
-      return -1;
-    }
-    if (pid == 0) {
-      dup2(fdin, STDIN_FILENO);
-      if(fdin != STDIN_FILENO){
-        close(fdin);
-      }
+    return 1;
+
+  } else {
+    // BOTTEN AV REKURSIONEN (Detta är det FÖRSTA kommandot i uttrycket, t.ex. echo)
     signal(SIGINT, SIG_IGN);
-    }
+    pid_t pid = fork();
 
-
-    int outfd;
-    if(cmd->rstdout){
-      int flags = O_WRONLY | O_CREAT | O_TRUNC;
-      outfd = open(cmd->rstdout, flags, 0644);
-      if(outfd < 0){
-        perror("Error opening output file");
-        exit(1);
+    if (pid < 0) {
+      perror("Error forking");
+      if (fdin != STDIN_FILENO) {
+        close(fdin);
       }
-      dup2(outfd, STDOUT_FILENO);
-      close(outfd);
-    }
-    // This else is created for the last command (Is this needed?)
-    
-    
-
-      
-      execvp(pgm->pgmlist[0], pgm->pgmlist);
-      
-      exit(1); //Failsafe
-    } else if(pid == -1) {
       return -1;
     }
 
-    //Back to parent process again
-    if(fdin != STDIN_FILENO){
+    if (pid == 0) {
+      signal(SIGINT, SIG_DFL);
+
+      // Det första kommandot ska skriva sin data till pipens SKRIVÄNDE (som ligger i fdin)
+      if (fdin != STDIN_FILENO) {
+        dup2(fdin, STDOUT_FILENO);
+        close(fdin);
+      }
+
+      // Om det finns en input-omdirigering för det första kommandot ( t.ex. < input.txt )
+      if (cmd->rstdin != NULL) {
+        int infd = open(cmd->rstdin, O_RDONLY);
+        if (infd < 0) {
+          perror("Error opening input file");
+          exit(1);
+        }
+        dup2(infd, STDIN_FILENO);
+        close(infd);
+      }
+
+      execvp(pgm->pgmlist[0], pgm->pgmlist);
+      perror("execvp");
+      exit(1);
+    }
+
+    // Föräldern stänger skrivänden så att nästa led i kedjan kan få EOF
+    if (fdin != STDIN_FILENO) {
       close(fdin);
     }
 
     waitpid(pid, NULL, 0);
     return 1;
   }
-  return 1;
+}
+void sigchld_handler(int sig) {
+  (void)sig;
+  while (waitpid(-1, NULL, WNOHANG) > 0) { }
+}
 
 
 /*
