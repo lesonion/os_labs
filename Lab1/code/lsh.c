@@ -24,6 +24,8 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 #include <signal.h>
+#include <errno.h>
+
 
 
 #include <unistd.h>
@@ -123,7 +125,9 @@ int execute_Command(Command *cmd) {
     }
     return 1;
   } else{
-    signal(SIGINT, SIG_IGN);
+    if (background != 1) {
+      signal(SIGINT, SIG_IGN);
+    }
     pid_t pid = fork();
     if(pid < 0){
       printf("Error forking");
@@ -131,7 +135,9 @@ int execute_Command(Command *cmd) {
     }
     
     if (pid == 0){ // Child process
-      signal(SIGINT, SIG_DFL); // Restore default signal handling for SIGINT in the child process
+      if(background != 1){
+        signal(SIGINT, SIG_DFL); // Restore default signal handling for SIGINT in the child process
+      }
 
 
       if(cmd-> rstdin != NULL){ // Check if input redirection is specified
@@ -168,7 +174,9 @@ int execute_Command(Command *cmd) {
       printf("Process running in background with PID: %d\n", pid); // Print the PID of the background process
       // waitpid(pid, NULL, WNOHANG); // Wait for the child process to finish without blocking
     } else {
-      waitpid(pid, NULL, 0); // Wait for the child process to finish if not running in background
+      while (waitpid(pid, NULL, 0) < 0) {
+        if (errno == ECHILD || errno != EINTR) break;
+      } // Wait for the child process to finish if not running in background
     } 
   
     // TODO Implement logic to execute the command
@@ -238,8 +246,11 @@ int run_Forks(Pgm *pgm, int fdin, Command *cmd) {
     if (fdin != STDIN_FILENO) {
       close(fdin);
     }
-
-    waitpid(pid, NULL, 0);
+  if (!cmd->background) {
+      while (waitpid(pid, NULL, 0) < 0) {
+        if (errno == ECHILD || errno != EINTR) break;
+      }
+    }
     return 1;
 
   } else {
@@ -284,14 +295,18 @@ int run_Forks(Pgm *pgm, int fdin, Command *cmd) {
     if (fdin != STDIN_FILENO) {
       close(fdin);
     }
-
-    waitpid(pid, NULL, 0);
+    if (!cmd->background) {
+      while (waitpid(pid, NULL, 0) < 0) {
+        if (errno == ECHILD || errno != EINTR) break;
+      }
+    }
     return 1;
   }
 }
 void sigchld_handler(int sig) {
-  (void)sig;
+  int saved_errno = errno; // Spara
   while (waitpid(-1, NULL, WNOHANG) > 0) { }
+  errno = saved_errno;     // Återställ
 }
 
 
