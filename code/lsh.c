@@ -106,12 +106,12 @@ int execute_Command(Command *cmd) {
   if (cmd->pgm->next != NULL) {
     printf("Debug: Detta är en pipeline!\n");
 
-    if(cmd->background){
-      printf("Process running in background with PID: %d\n", pid); // Print the PID of the background process
-      waitpid(pid, NULL, WNOHANG); // Wait for the child process to finish without blocking
-    } else {
-      waitpid(pid, NULL, 0); // Wait for the child process to finish if not running in background
-    }
+    // if(cmd->background){
+    //   printf("Process running in background with PID: %d\n", pid); // Print the PID of the background process
+    //   waitpid(pid, NULL, WNOHANG); // Wait for the child process to finish without blocking
+    // } else {
+    //   waitpid(pid, NULL, 0); // Wait for the child process to finish if not running in background
+    // }
     if (run_Forks(cmd->pgm, STDIN_FILENO) != 1) {
       printf("Error executing pipeline\n");
       return -1;
@@ -192,6 +192,8 @@ int run_Forks(Pgm *pgm, int fdin) {
       dup2(fdin, STDIN_FILENO);
       execvp(pgm->pgmlist[0], pgm->pgmlist);
       exit(1);
+    } else if(pid > 0){
+      waitpid(pid, NULL, 0);
     }
     return 1;
   }
