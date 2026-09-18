@@ -125,9 +125,7 @@ int execute_Command(Command *cmd) {
     }
     return 1;
   } else{
-    if (background != 1) {
-      signal(SIGINT, SIG_IGN);
-    }
+    signal(SIGINT, SIG_IGN);
     pid_t pid = fork();
     if(pid < 0){
       printf("Error forking");
@@ -135,10 +133,11 @@ int execute_Command(Command *cmd) {
     }
     
     if (pid == 0){ // Child process
-      if(background != 1){
-        signal(SIGINT, SIG_DFL); // Restore default signal handling for SIGINT in the child process
+      if (background == 1) {
+        signal(SIGINT, SIG_IGN);
+      } else {
+        signal(SIGINT, SIG_DFL);
       }
-
 
       if(cmd-> rstdin != NULL){ // Check if input redirection is specified
         int in = open(cmd->rstdin, O_RDONLY); // Open the input file for reading
@@ -214,8 +213,11 @@ int run_Forks(Pgm *pgm, int fdin, Command *cmd) {
     }
 
     if (pid == 0) {
-      signal(SIGINT, SIG_DFL); // Återställ Ctrl+C i barnet
-
+      if (cmd->background) {
+        signal(SIGINT, SIG_IGN);
+      } else {
+        signal(SIGINT, SIG_DFL); 
+      }
       // Koppla LÄSÄNDEN (fd[0]) till STDIN för detta kommando
       dup2(fd[0], STDIN_FILENO);
       close(fd[0]);
@@ -267,8 +269,11 @@ int run_Forks(Pgm *pgm, int fdin, Command *cmd) {
     }
 
     if (pid == 0) {
-      signal(SIGINT, SIG_DFL);
-
+      if (cmd->background) {
+        signal(SIGINT, SIG_IGN);
+      } else {
+        signal(SIGINT, SIG_DFL); 
+      }
       // Det första kommandot ska skriva sin data till pipens SKRIVÄNDE (som ligger i fdin)
       if (fdin != STDIN_FILENO) {
         dup2(fdin, STDOUT_FILENO);
