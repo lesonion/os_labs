@@ -36,7 +36,7 @@ static void print_pgm(Pgm *p);
 void stripwhite(char *);
 int execute_Command(Command *cmd);
 int run_Forks(Pgm *pgm, int fdin, Command *cmd);
-void sigchld_handler(int sig);
+void sigchld_handler();
 
 int main(void)
 {
@@ -282,7 +282,7 @@ int run_Forks(Pgm *pgm, int fdin, Command *cmd) {
   }
 }
 
-void sigchld_handler(int sig) { // Signal handler for SIGCHLD to reap zombie processes
+void sigchld_handler() { // Signal handler for SIGCHLD to reap zombie processes
   int saved_errno = errno;
   while (waitpid(-1, NULL, WNOHANG) > 0) { }
   errno = saved_errno;
