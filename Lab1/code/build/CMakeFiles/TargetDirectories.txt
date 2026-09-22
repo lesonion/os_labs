@@ -1,0 +1,3 @@
+/Users/josef/Documents/chalmers/year_4/operativsystem/os_labs/Lab1/code/build/CMakeFiles/lsh.dir
+/Users/josef/Documents/chalmers/year_4/operativsystem/os_labs/Lab1/code/build/CMakeFiles/edit_cache.dir
+/Users/josef/Documents/chalmers/year_4/operativsystem/os_labs/Lab1/code/build/CMakeFiles/rebuild_cache.dir
