@@ -53,7 +53,7 @@ int main(void)
     line = readline("> ");
     if (line == NULL) // Check if EOF (Ctrl+D) is reached
     {
-      break; // Exit the loop if EOF is reached (Ctrl+D)
+      break;
     }
 
     // Remove leading and trailing whitespace from the line
@@ -132,7 +132,7 @@ int execute_Command(Command *cmd) {
         
         if (in < 0) {
           perror("Error opening input file"); // Print an error message if the file cannot be opened
-          exit(1); // Exit the child process with an error code
+          exit(1);
         }
         
         dup2(in, STDIN_FILENO); // Redirect standard input to the opened file
@@ -142,19 +142,19 @@ int execute_Command(Command *cmd) {
       
       // stdout redirection
       if(cmd -> rstdout != NULL){
-        int out = open(cmd->rstdout, O_WRONLY | O_CREAT, 0644); // Open the output file for writing (create if it doesn't exist)
-      
+        int out = open(cmd->rstdout, O_WRONLY | O_CREAT | O_TRUNC, 0644); // Open the output file for writing (create if it doesn't exist)
+
         if(out < 0){
           perror("Error opening output file"); // Print an error message if the file cannot be opened
-          exit(1); // Exit the child process with an error code
+          exit(1);
         }
         dup2(out, STDOUT_FILENO); // Redirect standard output to the opened file
         close(out); // Close the file descriptor after redirection
       }
 
       if(execvp(args[0], args) == -1) { // Execute the command with the provided arguments
-        perror("Error executing command"); // Print an error message if the command execution fails
-        exit(1); // Exit the child process with an error code
+        perror("Error executing command");
+        exit(1);
       }
     }
     if(background == 1){
@@ -185,7 +185,7 @@ int run_Forks(Pgm *pgm, int fdin, Command *cmd) {
     close(fd[1]); // Close the write end of the pipe in the parent process, as it is no longer needed
 
     pid_t pid = fork(); // Fork a new process for the current command in the pipeline
-    if (pid < 0) { // Check for fork error
+    if (pid < 0) { 
       perror("Error forking");
       close(fd[0]);
       return -1;
