@@ -125,7 +125,7 @@ int execute_Command(Command *cmd) {
     }
     return 1;
   } else{
-    if (background != 1) {
+    if (background == 0) {
       signal(SIGINT, SIG_IGN);
     }
     pid_t pid = fork();
@@ -135,7 +135,7 @@ int execute_Command(Command *cmd) {
     }
     
     if (pid == 0){ // Child process
-      if(background != 1){
+      if(background == 0){
         signal(SIGINT, SIG_DFL); // Restore default signal handling for SIGINT in the child process
       }
 
