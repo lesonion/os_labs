@@ -86,15 +86,43 @@ timer_elapsed (int64_t then)
 
 /* Sleeps for approximately TICKS timer ticks.  Interrupts must
    be turned on. */
+// void
+// timer_sleep (int64_t ticks) 
+// {
+//   ASSERT (intr_get_level () == INTR_ON);
+  
+//   int64_t start = timer_ticks ();
+//   thread_current()->wakeup_time = start + ticks;
+//   thread_block();
+
+// }
+
 void
 timer_sleep (int64_t ticks) 
 {
-  int64_t start = timer_ticks ();
-
+  if (ticks <= 0) return;
+  
   ASSERT (intr_get_level () == INTR_ON);
-  while (timer_elapsed (start) < ticks) 
-    thread_yield ();
+  
+  enum intr_level old_level = intr_disable ();
+  
+  /* Spara när tråden ska vakna och blockera den */
+  thread_current ()->wakeup_time = timer_ticks () + ticks;
+  thread_block ();
+  
+  intr_set_level (old_level);
 }
+
+
+
+
+void check_for_wakeup(struct thread *t, void *aux UNUSED){
+    if(t -> status == THREAD_BLOCKED && t->wakeup_time != 0 && timer_ticks()>= t->wakeup_time){
+      t->wakeup_time = 0;
+      thread_unblock (t);      
+    }
+}
+
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
    turned on. */
@@ -171,6 +199,7 @@ static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
+  thread_foreach(check_for_wakeup, NULL);
   thread_tick ();
 }
 
