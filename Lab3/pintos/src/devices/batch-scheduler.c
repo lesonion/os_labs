@@ -75,25 +75,20 @@ static void transfer_data (const task_t *task);
 
 /* Releases the slot */
 static void release_slot (const task_t *task);
-
-//-------------New code-------------
-typedef enum { SEND, RECEIVE } direction_t;
-struct semaphore sema;
-struct lock bridge; 
+struct semaphore capacity;
+struct semaphore bridge;
+struct semaphore priority;
 direction_t current_direction;
-direction_t turn;                   
-/* initializes semaphores */ 
-void init_bus(void){ 
-    random_init((unsigned int)123456789); 
-    sema_init(&sema, BUS_CAPACITY);
-    
-    current_direction = SEND; 
-    turn = SEND;
-    lock_init(&bridge);
-// three locks available for the current direction. When the other side wants to aquire a lock
-// A binary semaphore goes to 0 which makes it not possible for the current side to aquire the locks.
-// When all locks are released then the other direction can aquire the locks. We need two waiting ques. 
+void init_bus (void) {
+  sema_init(&capacity, 3);
+  sema_init(&bridge, 1);
+  sema_init(&priority,1);
+  random_init ((unsigned int)123456789);
+  current_direction = SEND;
+  
 
+  /* TODO: Initialize global/static variables,
+     e.g. your condition variables, locks, counters etc */
 }
 
 void batch_scheduler (unsigned int num_priority_send,
@@ -188,53 +183,15 @@ static direction_t other_direction(direction_t this_direction) {
 }
 
 void get_slot (const task_t *task) {
-  while(sema.value <= BUS_CAPACITY && task->direction != current_direction){
-    if(){
-      lock_try_acquire(&bridge);
+    if(task->priority == PRIORITY){
+      sema_down(&priority);
+      direction_t priority_direction = task->direction;
     }
-  }
-  // not your turn, wait for the turn to be on your side
-  if( task->direction != current_direction && task->direction != turn){
-    timer_sleep(1);    
-  }
+    if(priority.value == 0 && task->priority = NORMAL){
+      timer_sleep(4 * task->transfer_duration);
+    } 
 
-
-  //if the task is on the turn side it can transefere data
-  if(task->direction == turn){ 
-    // if the task is on the current direction and there are available slots it can send data
-    if(task->direction == current_direction && sema.value > 0){ 
-      sema_down;
-      
-    }
-    // if the task is on the other side and the buss is emptyit can transefere data
-    else if(sema.value == BUS_CAPACITY && current_direction != task->direction){ 
-      turn = other_direction(current_direction);
-      sema_down;
-      
-    }
-    // if the turn is not on the task side
-    if(task->direction != turn){
-      // if the bus is empty and the current direction is the same as the task direction it can transfer data
-      if(sema.value == BUS_CAPACITY && current_direction == task->direction){
-        //other side dont want to use the bus,
-      }
-      // if the bus is empty and the current direction is not the same as the task direction it can transfer data
-      else if(sema.value == BUS_CAPACITY && current_direction != task->direction){
-        
-          lock_try_acquire(&bridge);
-      }
-
-    }
-    lock_try_acquire(&bridge);{
-      if(current_direction == task->direction && sema.value > 0){
-        sema_down;
-      }
-      if(sema.value == BUS_CAPACITY && current_direction != task->direction){
-        turn = other_ int direction(current_direction);
-        current_direction = turn;
-      }
-    }
-  }
+   
   /* TODO: Try to get a slot, respect the following rules:
    *        1. There can be only BUS_CAPACITY tasks using the bus
    *        2. The bus is half-duplex: All tasks using the bus should be either
@@ -254,9 +211,13 @@ void transfer_data (const task_t *task) {
 }
 
 void release_slot (const task_t *task) {
-  sema_up;
-  if(sema.value == BUS_CAPACITY){
-    lock_release(&bridge);
+  sema_up(&capacity);
+  if(capacity.value == BUS_CAPACITY){
+    current_direction = other_direction(task->direction);
+    sema_up(&bridge);
+  }
+  if(task->priority == PRIORITY){
+    sema_up(&priority);
   }
   /* TODO: Release the slot, think about the actions you need to perform:
    *       - Do you need to notify any waiting task?
