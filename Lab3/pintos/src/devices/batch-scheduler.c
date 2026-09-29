@@ -76,12 +76,24 @@ static void transfer_data (const task_t *task);
 /* Releases the slot */
 static void release_slot (const task_t *task);
 
-void init_bus (void) {
+//-------------New code-------------
+typedef enum { WEST, EAST } direction_t;
+struct semaphore sema;
+struct lock bridge; 
+direction_t current_direction;
+direction_t turn;                   
+/* initializes semaphores */ 
+void init_bus(void){ 
+    random_init((unsigned int)123456789); 
+    sema_init(&sema, BUS_CAPACITY);
+    
+    current_direction = WEST; 
+    turn = WEST;
+    lock_init(&bridge);
+// three locks available for the current direction. When the other side wants to aquire a lock
+// A binary semaphore goes to 0 which makes it not possible for the current side to aquire the locks.
+// When all locks are released then the other direction can aquire the locks. We need two waiting ques. 
 
-  random_init ((unsigned int)123456789);
-
-  /* TODO: Initialize global/static variables,
-     e.g. your condition variables, locks, counters etc */
 }
 
 void batch_scheduler (unsigned int num_priority_send,
@@ -172,11 +184,44 @@ void run_task(void *task_) {
 }
 
 static direction_t other_direction(direction_t this_direction) {
-  return this_direction == SEND ? RECEIVE : SEND;
+  return this_direction == EAST ? WEST : EAST;
 }
 
 void get_slot (const task_t *task) {
+  //if the task is on the turn side it can transefere data
+  if(task->direction == turn){ 
+    // if the task is on the current direction and there are available slots it can send data
+    if(task->direction == current_direction && sema.value > 0){ 
+      sema_down;
+      transfer_data(task);
+    }
+    // if the task is on the other side and the buss is emptyit can transefere data
+    else if(sema.value == BUS_CAPACITY && current_direction != task->direction){ 
+      turn = other_direction(current_direction);
+      sema_down;
+      transfer_data(task);
+    }
+    // if
+    if(task->direction != turn){
+      if(sema.value == BUS_CAPACITY && current_direction == task->direction){
+        //other side dont want to use the bus,
+      }
+      else if(sema.value == BUS_CAPACITY && current_direction != task->direction){
+      
+          lock_try_acquire(&bridge);
+      }
 
+    }
+    lock_try_acquire(&bridge);{
+      if(current_direction == task->direction && sema.value > 0){
+        sema_down;
+      }
+      if(sema.value == BUS_CAPACITY && current_direction != task->direction){
+        turn = other_ int direction(current_direction);
+        current_direction = turn;
+      }
+    }
+  }
   /* TODO: Try to get a slot, respect the following rules:
    *        1. There can be only BUS_CAPACITY tasks using the bus
    *        2. The bus is half-duplex: All tasks using the bus should be either
@@ -196,7 +241,8 @@ void transfer_data (const task_t *task) {
 }
 
 void release_slot (const task_t *task) {
-
+  sema_down;
+  
   /* TODO: Release the slot, think about the actions you need to perform:
    *       - Do you need to notify any waiting task?
    *       - Do you need to increment/decrement any counter?
