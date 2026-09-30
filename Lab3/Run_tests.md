@@ -5,6 +5,8 @@ Run this to test
     export PATH=/chalmers/sw/unsup64/phc/b/pkg/bochs-2.6.6/bin:$HOME/pintos/src/utils:$PATH
 
     source $HOME/.bashrc
+ 
+    cd ~/os_labs/Lab3
 
     chmod +x pintos/src/utils/pintos*
     chmod +x pintos/src/utils/backtrace

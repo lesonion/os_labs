@@ -12,5 +12,5 @@
 void test_batch_scheduler (void)
 {
     init_bus ();
-    batch_scheduler (3, 4, 3, 3);
+    batchScheduler (3, 4, 3, 3);
 }

@@ -57,7 +57,7 @@ typedef struct {
 } task_t;
 
 void init_bus (void);
-void batch_scheduler (unsigned int num_priority_send,
+void batchScheduler (unsigned int num_priority_send,
                       unsigned int num_priority_receive,
                       unsigned int num_tasks_send,
                       unsigned int num_tasks_receive);
@@ -75,23 +75,31 @@ static void transfer_data (const task_t *task);
 
 /* Releases the slot */
 static void release_slot (const task_t *task);
-struct semaphore capacity;
-struct semaphore bridge;
-struct semaphore priority;
+struct lock bus;
+struct condition wait_q[NUM_OF_DIRECTIONS][NUM_OF_PRIORITIES];
+int waiting_tasks[NUM_OF_DIRECTIONS][NUM_OF_PRIORITIES];
+int active_tasks = 0;
 direction_t current_direction;
-void init_bus (void) {
-  sema_init(&capacity, 3);
-  sema_init(&bridge, 1);
-  sema_init(&priority,1);
-  random_init ((unsigned int)123456789);
-  current_direction = SEND;
-  
 
-  /* TODO: Initialize global/static variables,
-     e.g. your condition variables, locks, counters etc */
+
+void init_bus (void) {
+
+  random_init ((unsigned int)123456789);
+  lock_init(&bus);
+  
+  cond_init(&wait_q[0][0]);
+  cond_init(&wait_q[0][1]);
+  cond_init(&wait_q[1][0]); 
+  cond_init(&wait_q[1][1]);
+
+  waiting_tasks[0][0]=0;
+  waiting_tasks[0][1]=0;
+  waiting_tasks[1][0]=0;
+  waiting_tasks[1][1]=0;
+
 }
 
-void batch_scheduler (unsigned int num_priority_send,
+void batchScheduler (unsigned int num_priority_send,
                       unsigned int num_priority_receive,
                       unsigned int num_tasks_send,
                       unsigned int num_tasks_receive) {
@@ -114,7 +122,7 @@ void batch_scheduler (unsigned int num_priority_send,
 
     total_transfer_dur += tasks[j].transfer_duration;
 
-    snprintf (thread_name, sizeof thread_name, "sender-prio");
+    // snprintf (thread_name, sizeof thread_name, "sender-prio");
     thread_create (thread_name, PRI_DEFAULT, run_task, (void *)&tasks[j]);
 
     j++;
@@ -128,7 +136,7 @@ void batch_scheduler (unsigned int num_priority_send,
 
     total_transfer_dur += tasks[j].transfer_duration;
 
-    snprintf (thread_name, sizeof thread_name, "receiver-prio");
+    // snprintf (thread_name, sizeof thread_name, "receiver-prio");
     thread_create (thread_name, PRI_DEFAULT, run_task, (void *)&tasks[j]);
 
     j++;
@@ -142,7 +150,7 @@ void batch_scheduler (unsigned int num_priority_send,
 
     total_transfer_dur += tasks[j].transfer_duration;
 
-    snprintf (thread_name, sizeof thread_name, "sender");
+    // snprintf (thread_name, sizeof thread_name, "sender");
     thread_create (thread_name, PRI_DEFAULT, run_task, (void *)&tasks[j]);
 
     j++;
@@ -156,7 +164,7 @@ void batch_scheduler (unsigned int num_priority_send,
 
     total_transfer_dur += tasks[j].transfer_duration;
 
-    snprintf (thread_name, sizeof thread_name, "receiver");
+    // snprintf (thread_name, sizeof thread_name, "receiver");
     thread_create (thread_name, PRI_DEFAULT, run_task, (void *)&tasks[j]);
 
     j++;
@@ -172,7 +180,7 @@ void run_task(void *task_) {
 
   get_slot (task);
 
-  msg ("%s acquired slot", thread_name());
+  // msg ("%s acquired slot", thread_name());
   transfer_data (task);
 
   release_slot (task);
@@ -183,26 +191,23 @@ static direction_t other_direction(direction_t this_direction) {
 }
 
 void get_slot (const task_t *task) {
-    if(task->priority == PRIORITY){
-      sema_down(&priority);
-      direction_t priority_direction = task->direction;
+  lock_acquire(&bus);
+  
+  while (active_tasks == BUS_CAPACITY || 
+        (active_tasks > 0 && current_direction != task->direction) ||
+        (task->priority == NORMAL && (waiting_tasks[SEND][PRIORITY] > 0 || 
+            waiting_tasks[RECEIVE][PRIORITY] > 0))) 
+    {
+      // waiting room
+      waiting_tasks[task->direction][task->priority] += 1;
+      cond_wait(&wait_q[task->direction][task-> priority], &bus);
+      waiting_tasks[task->direction][task-> priority] -= 1;    
     }
-    if(priority.value == 0 && task->priority = NORMAL){
-      timer_sleep(4 * task->transfer_duration);
-    } 
-
-   
-  /* TODO: Try to get a slot, respect the following rules:
-   *        1. There can be only BUS_CAPACITY tasks using the bus
-   *        2. The bus is half-duplex: All tasks using the bus should be either
-   * sending or receiving
-   *        3. A normal task should not get the bus if there are priority tasks
-   * waiting
-   *
-   * You do not need to guarantee fairness or freedom from starvation:
-   * feel free to schedule priority tasks of the same direction,
-   * even if there are priority tasks of the other direction waiting
-   */
+   // prepare for bus time
+  active_tasks += 1;
+  current_direction = task->direction;
+    
+  lock_release(&bus);
 }
 
 void transfer_data (const task_t *task) {
@@ -211,16 +216,32 @@ void transfer_data (const task_t *task) {
 }
 
 void release_slot (const task_t *task) {
-  sema_up(&capacity);
-  if(capacity.value == BUS_CAPACITY){
-    current_direction = other_direction(task->direction);
-    sema_up(&bridge);
+  // Entering CS
+  lock_acquire(&bus);
+  active_tasks -= 1;
+
+  // check if priority in curr dir, it wakes up immedietly
+  if(waiting_tasks[current_direction][PRIORITY] > 0){
+    cond_signal(&wait_q[current_direction][PRIORITY], &bus);
   }
-  if(task->priority == PRIORITY){
-    sema_up(&priority);
+
+  // check if normal prio in curr dir, no priority other dir
+  else if(waiting_tasks[current_direction][NORMAL]>0 && waiting_tasks[other_direction(current_direction)][PRIORITY] == 0 ){
+    cond_signal(&wait_q[current_direction][NORMAL], &bus);
   }
-  /* TODO: Release the slot, think about the actions you need to perform:
-   *       - Do you need to notify any waiting task?
-   *       - Do you need to increment/decrement any counter?
-   */
+
+  // check if priority in other dir, no active tasks(bus empty)
+  // If there is priority in other direction it will wait until all tasks is of the bus before 
+  //waking it up.
+  else if(waiting_tasks[other_direction(current_direction)][PRIORITY] > 0 && active_tasks == 0){
+    cond_broadcast(&wait_q[other_direction(current_direction)][PRIORITY], &bus);
+  }
+  
+  // check if normal in other dir, no active tasks(bus empty)
+  // Wake other direction
+  else if(waiting_tasks[other_direction(current_direction)][NORMAL]>0 && active_tasks == 0){
+    cond_broadcast(&wait_q[other_direction(current_direction)][NORMAL], &bus);
+  }
+ // Leaving CS
+  lock_release(&bus);
 }
