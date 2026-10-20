@@ -8,8 +8,9 @@ set(CMAKE_DEPENDS_LANGUAGES
 
 # The set of dependency files which are needed:
 set(CMAKE_DEPENDS_DEPENDENCY_FILES
-  "/Users/josef/Documents/chalmers/year_4/operativsystem/os_labs/Lab1/code/lsh.c" "CMakeFiles/lsh.dir/lsh.c.o" "gcc" "CMakeFiles/lsh.dir/lsh.c.o.d"
-  "/Users/josef/Documents/chalmers/year_4/operativsystem/os_labs/Lab1/code/parse.c" "CMakeFiles/lsh.dir/parse.c.o" "gcc" "CMakeFiles/lsh.dir/parse.c.o.d"
+  "/home/lok/Documents/OS EDA093/LabGroupLabs/os_labs/Lab1/code/lsh.c" "CMakeFiles/lsh.dir/lsh.c.o" "gcc" "CMakeFiles/lsh.dir/lsh.c.o.d"
+  "/home/lok/Documents/OS EDA093/LabGroupLabs/os_labs/Lab1/code/parse.c" "CMakeFiles/lsh.dir/parse.c.o" "gcc" "CMakeFiles/lsh.dir/parse.c.o.d"
+  "" "lsh" "gcc" "CMakeFiles/lsh.dir/link.d"
   )
 
 # Targets to which this target links which contain Fortran sources.

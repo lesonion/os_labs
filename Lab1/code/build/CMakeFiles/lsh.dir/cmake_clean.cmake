@@ -1,4 +1,5 @@
 file(REMOVE_RECURSE
+  "CMakeFiles/lsh.dir/link.d"
   "CMakeFiles/lsh.dir/lsh.c.o"
   "CMakeFiles/lsh.dir/lsh.c.o.d"
   "CMakeFiles/lsh.dir/parse.c.o"

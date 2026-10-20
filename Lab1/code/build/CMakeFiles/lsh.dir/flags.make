@@ -6,7 +6,5 @@ C_DEFINES =
 
 C_INCLUDES = 
 
-C_FLAGSarm64 =  -arch arm64 -ggdb3 -O0 -Wall -Wextra
-
-C_FLAGS =  -arch arm64 -ggdb3 -O0 -Wall -Wextra
+C_FLAGS = -ggdb3 -O0 -Wall -Wextra
 

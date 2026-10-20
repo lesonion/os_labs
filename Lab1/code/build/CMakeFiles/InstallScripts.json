@@ -1,7 +1,7 @@
 {
 	"InstallScripts" : 
 	[
-		"/Users/josef/Documents/chalmers/year_4/operativsystem/os_labs/Lab1/code/build/cmake_install.cmake"
+		"/home/lok/Documents/OS EDA093/LabGroupLabs/os_labs/Lab1/code/build/cmake_install.cmake"
 	],
 	"Parallel" : false
 }

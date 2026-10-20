@@ -44,19 +44,19 @@ cmake_force:
 SHELL = /bin/sh
 
 # The CMake executable.
-CMAKE_COMMAND = /opt/homebrew/bin/cmake
+CMAKE_COMMAND = /usr/bin/cmake
 
 # The command to remove a file.
-RM = /opt/homebrew/bin/cmake -E rm -f
+RM = /usr/bin/cmake -E rm -f
 
 # Escaping for special characters.
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /Users/josef/Documents/chalmers/year_4/operativsystem/os_labs/Lab1/code
+CMAKE_SOURCE_DIR = "/home/lok/Documents/OS EDA093/LabGroupLabs/os_labs/Lab1/code"
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /Users/josef/Documents/chalmers/year_4/operativsystem/os_labs/Lab1/code/build
+CMAKE_BINARY_DIR = "/home/lok/Documents/OS EDA093/LabGroupLabs/os_labs/Lab1/code/build"
 
 # Include any dependencies generated for this target.
 include CMakeFiles/lsh.dir/depend.make
@@ -73,32 +73,32 @@ CMakeFiles/lsh.dir/codegen:
 .PHONY : CMakeFiles/lsh.dir/codegen
 
 CMakeFiles/lsh.dir/parse.c.o: CMakeFiles/lsh.dir/flags.make
-CMakeFiles/lsh.dir/parse.c.o: /Users/josef/Documents/chalmers/year_4/operativsystem/os_labs/Lab1/code/parse.c
+CMakeFiles/lsh.dir/parse.c.o: /home/lok/Documents/OS\ EDA093/LabGroupLabs/os_labs/Lab1/code/parse.c
 CMakeFiles/lsh.dir/parse.c.o: CMakeFiles/lsh.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Users/josef/Documents/chalmers/year_4/operativsystem/os_labs/Lab1/code/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building C object CMakeFiles/lsh.dir/parse.c.o"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/lsh.dir/parse.c.o -MF CMakeFiles/lsh.dir/parse.c.o.d -o CMakeFiles/lsh.dir/parse.c.o -c /Users/josef/Documents/chalmers/year_4/operativsystem/os_labs/Lab1/code/parse.c
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir="/home/lok/Documents/OS EDA093/LabGroupLabs/os_labs/Lab1/code/build/CMakeFiles" --progress-num=$(CMAKE_PROGRESS_1) "Building C object CMakeFiles/lsh.dir/parse.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/lsh.dir/parse.c.o -MF CMakeFiles/lsh.dir/parse.c.o.d -o CMakeFiles/lsh.dir/parse.c.o -c "/home/lok/Documents/OS EDA093/LabGroupLabs/os_labs/Lab1/code/parse.c"
 
 CMakeFiles/lsh.dir/parse.c.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/lsh.dir/parse.c.i"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /Users/josef/Documents/chalmers/year_4/operativsystem/os_labs/Lab1/code/parse.c > CMakeFiles/lsh.dir/parse.c.i
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E "/home/lok/Documents/OS EDA093/LabGroupLabs/os_labs/Lab1/code/parse.c" > CMakeFiles/lsh.dir/parse.c.i
 
 CMakeFiles/lsh.dir/parse.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/lsh.dir/parse.c.s"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /Users/josef/Documents/chalmers/year_4/operativsystem/os_labs/Lab1/code/parse.c -o CMakeFiles/lsh.dir/parse.c.s
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S "/home/lok/Documents/OS EDA093/LabGroupLabs/os_labs/Lab1/code/parse.c" -o CMakeFiles/lsh.dir/parse.c.s
 
 CMakeFiles/lsh.dir/lsh.c.o: CMakeFiles/lsh.dir/flags.make
-CMakeFiles/lsh.dir/lsh.c.o: /Users/josef/Documents/chalmers/year_4/operativsystem/os_labs/Lab1/code/lsh.c
+CMakeFiles/lsh.dir/lsh.c.o: /home/lok/Documents/OS\ EDA093/LabGroupLabs/os_labs/Lab1/code/lsh.c
 CMakeFiles/lsh.dir/lsh.c.o: CMakeFiles/lsh.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Users/josef/Documents/chalmers/year_4/operativsystem/os_labs/Lab1/code/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building C object CMakeFiles/lsh.dir/lsh.c.o"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/lsh.dir/lsh.c.o -MF CMakeFiles/lsh.dir/lsh.c.o.d -o CMakeFiles/lsh.dir/lsh.c.o -c /Users/josef/Documents/chalmers/year_4/operativsystem/os_labs/Lab1/code/lsh.c
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir="/home/lok/Documents/OS EDA093/LabGroupLabs/os_labs/Lab1/code/build/CMakeFiles" --progress-num=$(CMAKE_PROGRESS_2) "Building C object CMakeFiles/lsh.dir/lsh.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/lsh.dir/lsh.c.o -MF CMakeFiles/lsh.dir/lsh.c.o.d -o CMakeFiles/lsh.dir/lsh.c.o -c "/home/lok/Documents/OS EDA093/LabGroupLabs/os_labs/Lab1/code/lsh.c"
 
 CMakeFiles/lsh.dir/lsh.c.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/lsh.dir/lsh.c.i"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /Users/josef/Documents/chalmers/year_4/operativsystem/os_labs/Lab1/code/lsh.c > CMakeFiles/lsh.dir/lsh.c.i
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E "/home/lok/Documents/OS EDA093/LabGroupLabs/os_labs/Lab1/code/lsh.c" > CMakeFiles/lsh.dir/lsh.c.i
 
 CMakeFiles/lsh.dir/lsh.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/lsh.dir/lsh.c.s"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /Users/josef/Documents/chalmers/year_4/operativsystem/os_labs/Lab1/code/lsh.c -o CMakeFiles/lsh.dir/lsh.c.s
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S "/home/lok/Documents/OS EDA093/LabGroupLabs/os_labs/Lab1/code/lsh.c" -o CMakeFiles/lsh.dir/lsh.c.s
 
 # Object files for target lsh
 lsh_OBJECTS = \
@@ -111,8 +111,9 @@ lsh_EXTERNAL_OBJECTS =
 lsh: CMakeFiles/lsh.dir/parse.c.o
 lsh: CMakeFiles/lsh.dir/lsh.c.o
 lsh: CMakeFiles/lsh.dir/build.make
+lsh: CMakeFiles/lsh.dir/compiler_depend.ts
 lsh: CMakeFiles/lsh.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/Users/josef/Documents/chalmers/year_4/operativsystem/os_labs/Lab1/code/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Linking C executable lsh"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir="/home/lok/Documents/OS EDA093/LabGroupLabs/os_labs/Lab1/code/build/CMakeFiles" --progress-num=$(CMAKE_PROGRESS_3) "Linking C executable lsh"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/lsh.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.
@@ -124,6 +125,6 @@ CMakeFiles/lsh.dir/clean:
 .PHONY : CMakeFiles/lsh.dir/clean
 
 CMakeFiles/lsh.dir/depend:
-	cd /Users/josef/Documents/chalmers/year_4/operativsystem/os_labs/Lab1/code/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /Users/josef/Documents/chalmers/year_4/operativsystem/os_labs/Lab1/code /Users/josef/Documents/chalmers/year_4/operativsystem/os_labs/Lab1/code /Users/josef/Documents/chalmers/year_4/operativsystem/os_labs/Lab1/code/build /Users/josef/Documents/chalmers/year_4/operativsystem/os_labs/Lab1/code/build /Users/josef/Documents/chalmers/year_4/operativsystem/os_labs/Lab1/code/build/CMakeFiles/lsh.dir/DependInfo.cmake "--color=$(COLOR)" lsh
+	cd "/home/lok/Documents/OS EDA093/LabGroupLabs/os_labs/Lab1/code/build" && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" "/home/lok/Documents/OS EDA093/LabGroupLabs/os_labs/Lab1/code" "/home/lok/Documents/OS EDA093/LabGroupLabs/os_labs/Lab1/code" "/home/lok/Documents/OS EDA093/LabGroupLabs/os_labs/Lab1/code/build" "/home/lok/Documents/OS EDA093/LabGroupLabs/os_labs/Lab1/code/build" "/home/lok/Documents/OS EDA093/LabGroupLabs/os_labs/Lab1/code/build/CMakeFiles/lsh.dir/DependInfo.cmake" "--color=$(COLOR)" lsh
 .PHONY : CMakeFiles/lsh.dir/depend
 

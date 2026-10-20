@@ -36,7 +36,7 @@ static void print_pgm(Pgm *p);
 void stripwhite(char *);
 int execute_Command(Command *cmd);
 int run_Forks(Pgm *pgm, int fdin, Command *cmd);
-void sigchld_handler();
+void sigchld_handler(int signum);
 
 int main(void)
 {
@@ -168,121 +168,199 @@ int execute_Command(Command *cmd) {
   }
 }
 
+
 int run_Forks(Pgm *pgm, int fdin, Command *cmd) {
-  if (pgm == NULL) {
-    return -1;
-  }
-  if (pgm->next != NULL) {
-    int fd[2];
-    if (pipe(fd) < 0) {
-      perror("pipe");
-      return -1;
+    if (pgm == NULL || cmd == NULL) {
+        return -1;
+    }
+
+    // Count children
+    int num_children = 0;
+    for (Pgm *p = pgm; p != NULL; p = p->next) {
+        num_children++;
+    }
+
+    pid_t *pids = malloc(num_children * sizeof(*pids));
+    if (pids == NULL) {
+        perror("malloc");
+        return -1;
+    }
+
+    // Masking children to show they are foreground and should not be reaped
+    sigset_t blockmask, oldmask;
+    sigemptyset(&blockmask);
+    sigaddset(&blockmask, SIGCHLD);
+
+    if (sigprocmask(SIG_BLOCK, &blockmask, &oldmask) == -1) {
+        perror("sigprocmask");
+        free(pids);
+        return -1;
     }
 
     signal(SIGINT, SIG_IGN);
 
-    run_Forks(pgm->next, fd[1], cmd); // Recursively call run_Forks for the next command in the pipeline, passing the write end of the pipe (fd[1]) as the input for the next command
-    close(fd[1]); // Close the write end of the pipe in the parent process, as it is no longer needed
+    int child_count = 0;
+    int success = 1;
 
-    pid_t pid = fork(); // Fork a new process for the current command in the pipeline
-    if (pid < 0) { 
-      perror("Error forking");
-      close(fd[0]);
-      return -1;
-    }
+    // Changed the concurrency of the function to a loop
+    for (Pgm *current = pgm; current != NULL;
+         current = current->next) {
 
-    if (pid == 0) { // Child process
-      if (cmd->background) {
-        signal(SIGINT, SIG_IGN);
-      } else {
-        signal(SIGINT, SIG_DFL); 
-      }
-      dup2(fd[0], STDIN_FILENO);
-      close(fd[0]);
+        int fd[2] = {-1, -1};
 
-      if (fdin != STDIN_FILENO) {
-        dup2(fdin, STDOUT_FILENO);
-        close(fdin);
-      }
-
-      if (cmd->rstdout != NULL) {
-        int outfd = open(cmd->rstdout, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-        if (outfd < 0) {
-          perror("Error opening output file");
-          exit(1);
+        // Create a pipe if another command exists
+        if (current->next != NULL) {
+            if (pipe(fd) == -1) {
+                perror("pipe");
+                success = 0;
+                break;
+            }
         }
-        dup2(outfd, STDOUT_FILENO);
-        close(outfd);
-      }
 
-      execvp(pgm->pgmlist[0], pgm->pgmlist);
-      perror("execvp");
-      exit(1);
+        pid_t pid = fork();
+
+        if (pid < 0) {
+            perror("fork");
+
+            if (fd[0] != -1) close(fd[0]);
+            if (fd[1] != -1) close(fd[1]);
+
+            success = 0;
+            break;
+        }
+
+        if (pid == 0) {
+            // CHILD
+
+            if (sigprocmask(SIG_SETMASK, &oldmask, NULL) == -1) {
+                perror("sigprocmask");
+                exit(1);
+            }
+
+            if (cmd->background) {
+                signal(SIGINT, SIG_IGN);
+            } else {
+                signal(SIGINT, SIG_DFL);
+            }
+
+            // Receive input from the next command
+            if (fd[0] != -1) {
+                if (dup2(fd[0], STDIN_FILENO) == -1) {
+                    perror("dup2 stdin");
+                    exit(1);
+                }
+            }
+
+            // Send output to the previous command
+            if (fdin != STDIN_FILENO) {
+                if (dup2(fdin, STDOUT_FILENO) == -1) {
+                    perror("dup2 stdout");
+                    exit(1);
+                }
+            }
+
+            // Close unused fds
+            if (fd[0] != -1) close(fd[0]);
+            if (fd[1] != -1) close(fd[1]);
+            if (fdin != STDIN_FILENO) close(fdin);
+
+            // Input redirection
+            if (current->next == NULL && cmd->rstdin != NULL) {
+                int in = open(cmd->rstdin, O_RDONLY);
+
+                if (in == -1) {
+                    perror("open input");
+                    exit(1);
+                }
+
+                if (dup2(in, STDIN_FILENO) == -1) {
+                    perror("dup2 input");
+                    exit(1);
+                }
+
+                close(in);
+            }
+
+            // Output redirection
+            if (current == pgm && cmd->rstdout != NULL) {
+                int out = open(cmd->rstdout,
+                               O_WRONLY | O_CREAT | O_TRUNC, 0644);
+
+                if (out == -1) {
+                    perror("open output");
+                    exit(1);
+                }
+
+                if (dup2(out, STDOUT_FILENO) == -1) {
+                    perror("dup2 output");
+                    exit(1);
+                }
+
+                close(out);
+            }
+
+            execvp(current->pgmlist[0], current->pgmlist);
+            perror("execvp");
+            exit(127);
+        }
+
+        // PARENT 
+
+        pids[child_count++] = pid;
+
+        // Output pipe is no longer needed
+        if (fdin != STDIN_FILENO) {
+            close(fdin);
+        }
+
+        // Don't read new pipe
+        if (fd[0] != -1) {
+            close(fd[0]);
+        }
+
+        // Save write end 
+        fdin = fd[1];
     }
 
-    close(fd[0]);
     if (fdin != STDIN_FILENO) {
-      close(fdin);
-    }
-  if (!cmd->background) {
-      while (waitpid(pid, NULL, 0) < 0) {
-        if (errno == ECHILD || errno != EINTR) break;
-      }
-    }
-    return 1;
-
-  } else { // Last command in the pipeline
-    signal(SIGINT, SIG_IGN);
-    pid_t pid = fork();
-
-    if (pid < 0) {
-      perror("Error forking");
-      if (fdin != STDIN_FILENO) {
         close(fdin);
-      }
-      return -1;
     }
 
-    if (pid == 0) { // Child process
-      if (cmd->background) {
-        signal(SIGINT, SIG_IGN);
-      } else {
-        signal(SIGINT, SIG_DFL); 
-      }
-
-      if (fdin != STDIN_FILENO) { // If the input file descriptor is not standard input, redirect it to standard output
-        dup2(fdin, STDOUT_FILENO);
-        close(fdin);
-      }
-
-      if (cmd->rstdin != NULL) { // If there is an input redirection specified, open the input file and redirect standard input to it
-        int infd = open(cmd->rstdin, O_RDONLY);
-        if (infd < 0) {
-          perror("Error opening input file");
-          exit(1);
+    // Cleanup on failure
+    if (!success) {
+        for (int i = 0; i < child_count; i++) {
+            kill(pids[i], SIGTERM);
         }
-        dup2(infd, STDIN_FILENO);
-        close(infd);
-      }
-
-      execvp(pgm->pgmlist[0], pgm->pgmlist); // Execute the command with the provided arguments
-      perror("execvp");
-      exit(1);
     }
 
-    if (fdin != STDIN_FILENO) { // Close the input file descriptor in the parent process if it is not standard input
-      close(fdin);
+    // Wait only after every child has been created
+    if (!cmd->background || !success) {
+        for (int i = 0; i < child_count; i++) {
+            pid_t result;
+
+            do {
+                result = waitpid(pids[i], NULL, 0);
+            } while (result == -1 && errno == EINTR);
+
+            if (result == -1) {
+                perror("waitpid");
+                success = 0;
+            }
+        }
     }
-    if (!cmd->background) {
-      while (waitpid(pid, NULL, 0) < 0) {
-        if (errno == ECHILD || errno != EINTR) break;
-      }
+
+    // Restore signal mask
+    if (sigprocmask(SIG_SETMASK, &oldmask, NULL) == -1) {
+        perror("sigprocmask");
+        success = 0;
     }
-    return 1;
-  }
+
+    free(pids);
+
+    return success ? 1 : -1;
 }
 
-void sigchld_handler() { // Signal handler for SIGCHLD to reap zombie processes
+void sigchld_handler(int signum) { // Signal handler for SIGCHLD to reap zombie processes
   int saved_errno = errno;
   while (waitpid(-1, NULL, WNOHANG) > 0) { }
   errno = saved_errno;
