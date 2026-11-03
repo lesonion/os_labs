@@ -37,6 +37,22 @@ void stripwhite(char *);
 int execute_Command(Command *cmd);
 int run_Forks(Pgm *pgm, int fdin, Command *cmd);
 void sigchld_handler(int signum);
+static void configure_child_signals(int background);
+
+static void configure_child_signals(int background)
+{
+  if (background && setpgid(0, 0) == -1)
+  {
+    perror("setpgid");
+    _exit(1);
+  }
+
+  if (signal(SIGINT, SIG_DFL) == SIG_ERR)
+  {
+    perror("signal SIGINT");
+    _exit(1);
+  }
+}
 
 int main(void)
 {
@@ -121,11 +137,7 @@ int execute_Command(Command *cmd) {
     }
     
     if (pid == 0){ // Child process
-      if (background == 1) {
-        signal(SIGINT, SIG_IGN);
-      } else {
-        signal(SIGINT, SIG_DFL);
-      }
+      configure_child_signals(background);
 
       if(cmd-> rstdin != NULL){ // Check if input redirection is specified
         int in = open(cmd->rstdin, O_RDONLY); // Open the input file for reading
@@ -237,11 +249,7 @@ int run_Forks(Pgm *pgm, int fdin, Command *cmd) {
                 exit(1);
             }
 
-            if (cmd->background) {
-                signal(SIGINT, SIG_IGN);
-            } else {
-                signal(SIGINT, SIG_DFL);
-            }
+            configure_child_signals(cmd->background);
 
             // Receive input from the next command
             if (fd[0] != -1) {
@@ -438,5 +446,4 @@ void stripwhite(char *string)
 
   string[++i] = '\0';
 }
-
 
